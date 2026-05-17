@@ -1,34 +1,33 @@
 <script setup lang="ts">
-const decks = [
-  {
-    id: 1,
-    title: 'Java Grundlagen',
-    description: 'Karteikarten zu Klassen, Objekten und Vererbung',
-    cardCount: 12,
-  },
-  {
-    id: 2,
-    title: 'Webtechnologien',
-    description: 'HTML, CSS, Vue.js und REST APIs',
-    cardCount: 18,
-  },
-  {
-    id: 3,
-    title: 'Datenbanken',
-    description: 'SQL, Tabellen und Beziehungen',
-    cardCount: 9,
-  },
-]
+import { ref, onMounted } from 'vue'
+
+interface Card {
+  name: string
+}
+
+const cards = ref<Card[]>([])
+const error = ref<string | null>(null)
+const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+
+onMounted(async () => {
+  try {
+    const response = await fetch(`${apiUrl}/test`)
+    if (!response.ok) throw new Error(`Serverfehler: ${response.status}`)
+    cards.value = await response.json()
+  } catch (e) {
+    error.value = 'Karten konnten nicht geladen werden.'
+  }
+})
 </script>
 
 <template>
   <section class="deck-list">
     <h1>Lernkarten-Decks</h1>
 
-    <article v-for="deck in decks" :key="deck.id" class="deck-card">
-      <h2>{{ deck.title }}</h2>
-      <p>{{ deck.description }}</p>
-      <span>{{ deck.cardCount }} Karten</span>
+    <p v-if="error" class="error">{{ error }}</p>
+
+    <article v-for="card in cards" :key="card.name" class="deck-card">
+      <h2>{{ card.name }}</h2>
     </article>
   </section>
 </template>
