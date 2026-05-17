@@ -1,21 +1,23 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-interface Card {
-  name: string
+interface Deck {
+  id: number
+  title: string
+  category: string
 }
 
-const cards = ref<Card[]>([])
+const decks = ref<Deck[]>([])
 const error = ref<string | null>(null)
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
 onMounted(async () => {
   try {
-    const response = await fetch(`${apiUrl}/test`)
+    const response = await fetch(`${apiUrl}/api/decks`)
     if (!response.ok) throw new Error(`Serverfehler: ${response.status}`)
-    cards.value = await response.json()
+    decks.value = await response.json()
   } catch (e) {
-    error.value = 'Karten konnten nicht geladen werden.'
+    error.value = 'Decks konnten nicht geladen werden.'
   }
 })
 </script>
@@ -26,8 +28,9 @@ onMounted(async () => {
 
     <p v-if="error" class="error">{{ error }}</p>
 
-    <article v-for="card in cards" :key="card.name" class="deck-card">
-      <h2>{{ card.name }}</h2>
+    <article v-for="deck in decks" :key="deck.id" class="deck-card">
+      <h2>{{ deck.title }}</h2>
+      <p>{{ deck.category }}</p>
     </article>
   </section>
 </template>
