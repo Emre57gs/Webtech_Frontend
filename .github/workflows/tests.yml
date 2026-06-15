@@ -13,7 +13,7 @@ jobs:
           node-version: 20
       - name: Abhängigkeiten installieren
         working-directory: vue-frontend
-        run: npm ci
+        run: npm install
       - name: Frontend-Tests ausführen
         working-directory: vue-frontend
         run: npm run test:unit -- --run
