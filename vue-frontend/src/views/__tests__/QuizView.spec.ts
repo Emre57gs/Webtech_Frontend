@@ -33,7 +33,7 @@ describe('QuizView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Was ist 2+2?')
-    expect(wrapper.text()).toContain('1 / 2')
+    expect(wrapper.text()).toContain('Karte 1 von 2')
   })
 
   it('zeigt Fehlermeldung wenn fetch fehlschlägt', async () => {
@@ -79,7 +79,7 @@ describe('QuizView', () => {
     await wrapper.find('.btn-correct').trigger('click')
 
     expect(wrapper.text()).toContain('Hauptstadt von Frankreich?')
-    expect(wrapper.text()).toContain('2 / 2')
+    expect(wrapper.text()).toContain('Karte 2 von 2')
   })
 
   it('zeigt Endscreen nach der letzten Karte', async () => {
