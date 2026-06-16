@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 
 interface Deck {
   id: number
@@ -7,6 +8,7 @@ interface Deck {
   category: string
 }
 
+const router = useRouter()
 const decks = ref<Deck[]>([])
 const error = ref<string | null>(null)
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
@@ -15,6 +17,14 @@ const newTitle = ref('')
 const newCategory = ref('')
 
 const deletingId = ref<number | null>(null)
+
+function goToDeck(deck: Deck) {
+  router.push({
+    name: 'deck',
+    params: { id: deck.id },
+    query: { title: deck.title, category: deck.category },
+  })
+}
 
 async function loadDecks() {
   try {
@@ -81,20 +91,23 @@ onMounted(loadDecks)
     </p>
 
     <div class="deck-grid">
-      <article v-for="deck in decks" :key="deck.id" class="deck-card">
+      <article v-for="deck in decks" :key="deck.id" class="deck-card" @click="goToDeck(deck)">
         <template v-if="deletingId !== deck.id">
           <div class="deck-card-top">
             <span class="deck-category">{{ deck.category }}</span>
-            <button class="btn-delete" @click="deletingId = deck.id" title="Deck löschen">✕</button>
+            <button class="btn-delete" @click.stop="deletingId = deck.id" title="Deck löschen">
+              ✕
+            </button>
           </div>
           <h3 class="deck-title">{{ deck.title }}</h3>
+          <p class="deck-hint">Klicken zum Öffnen →</p>
         </template>
 
         <template v-else>
           <p class="delete-question">„{{ deck.title }}" löschen?</p>
           <div class="delete-actions">
-            <button class="btn-cancel-inline" @click="deletingId = null">Abbrechen</button>
-            <button class="btn-danger-inline" @click="deleteDeck(deck.id)">Löschen</button>
+            <button class="btn-cancel-inline" @click.stop="deletingId = null">Abbrechen</button>
+            <button class="btn-danger-inline" @click.stop="deleteDeck(deck.id)">Löschen</button>
           </div>
         </template>
       </article>
@@ -225,9 +238,19 @@ onMounted(loadDecks)
     transform 0.15s;
 }
 
+.deck-card {
+  cursor: pointer;
+}
+
 .deck-card:hover {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
+}
+
+.deck-hint {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 0.4rem;
 }
 
 .deck-card-top {
