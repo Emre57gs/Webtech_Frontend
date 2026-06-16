@@ -17,27 +17,35 @@ const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
 const cards = ref<Card[]>([])
 const error = ref<string | null>(null)
+const loading = ref(true)
+const adding = ref(false)
 const newQuestion = ref('')
 const newAnswer = ref('')
 const revealedIds = ref<Set<number>>(new Set())
 
 async function loadCards() {
+  loading.value = true
+  error.value = null
   try {
     const res = await fetch(`${apiUrl}/api/decks/${deckId}/cards`)
     if (!res.ok) throw new Error()
     cards.value = await res.json()
   } catch {
     error.value = 'Karten konnten nicht geladen werden.'
+  } finally {
+    loading.value = false
   }
 }
 
 async function addCard() {
-  if (!newQuestion.value || !newAnswer.value) return
+  if (!newQuestion.value.trim() || !newAnswer.value.trim()) return
+  adding.value = true
+  error.value = null
   try {
     const res = await fetch(`${apiUrl}/api/decks/${deckId}/cards`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: newQuestion.value, answer: newAnswer.value }),
+      body: JSON.stringify({ question: newQuestion.value.trim(), answer: newAnswer.value.trim() }),
     })
     if (!res.ok) throw new Error()
     newQuestion.value = ''
@@ -45,6 +53,8 @@ async function addCard() {
     await loadCards()
   } catch {
     error.value = 'Karte konnte nicht erstellt werden.'
+  } finally {
+    adding.value = false
   }
 }
 
@@ -63,29 +73,50 @@ onMounted(loadCards)
 
 <template>
   <div class="deck-view">
-    <div class="deck-header">
-      <button class="btn-back" @click="router.push('/')">← Zurück</button>
+    <nav class="deck-header" aria-label="Deck-Navigation">
+      <button class="btn-back" @click="router.push('/')" aria-label="Zurück zur Startseite">
+        ← Zurück
+      </button>
       <div class="deck-meta">
         <span class="deck-category-badge">{{ deckCategory }}</span>
         <h1 class="deck-heading">{{ deckTitle }}</h1>
       </div>
-      <button class="btn-quiz" :disabled="cards.length === 0" @click="startQuiz">
+      <button
+        class="btn-quiz"
+        :disabled="cards.length === 0 || loading"
+        :aria-disabled="cards.length === 0 || loading"
+        @click="startQuiz"
+      >
         Quiz starten →
       </button>
-    </div>
+    </nav>
 
-    <p v-if="error" class="error">⚠ {{ error }}</p>
+    <div v-if="error" role="alert" aria-live="assertive" class="error">⚠ {{ error }}</div>
 
-    <div class="add-card-form">
+    <section class="add-card-form" aria-label="Neue Karte hinzufügen">
       <h2 class="form-title">Neue Karte hinzufügen</h2>
-      <form @submit.prevent="addCard" class="card-form">
-        <textarea v-model="newQuestion" placeholder="Frage" rows="2" required></textarea>
-        <textarea v-model="newAnswer" placeholder="Antwort" rows="2" required></textarea>
-        <button type="submit" class="btn-primary">Karte hinzufügen</button>
+      <form @submit.prevent="addCard" class="card-form" novalidate>
+        <textarea
+          v-model="newQuestion"
+          placeholder="Frage"
+          aria-label="Frage"
+          rows="2"
+          required
+        ></textarea>
+        <textarea
+          v-model="newAnswer"
+          placeholder="Antwort"
+          aria-label="Antwort"
+          rows="2"
+          required
+        ></textarea>
+        <button type="submit" class="btn-primary" :disabled="adding" :aria-busy="adding">
+          {{ adding ? 'Wird hinzugefügt…' : 'Karte hinzufügen' }}
+        </button>
       </form>
-    </div>
+    </section>
 
-    <div class="cards-section">
+    <section class="cards-section" aria-label="Kartenliste">
       <div class="cards-header">
         <h2 class="section-title">Karten</h2>
         <span class="card-count"
@@ -93,23 +124,33 @@ onMounted(loadCards)
         >
       </div>
 
-      <p v-if="cards.length === 0" class="empty">
+      <div v-if="loading" class="loading" role="status" aria-label="Karten werden geladen">
+        <span class="spinner" aria-hidden="true"></span>
+        <span>Laden…</span>
+      </div>
+
+      <p v-else-if="cards.length === 0" class="empty">
         Noch keine Karten – füge deine erste Karte hinzu!
       </p>
 
-      <ul class="card-list">
-        <li v-for="card in cards" :key="card.id" class="card-item">
+      <ul v-else class="card-list" role="list">
+        <li v-for="card in cards" :key="card.id" class="card-item" role="listitem">
           <div class="card-question">{{ card.question }}</div>
-          <div class="card-divider"></div>
+          <div class="card-divider" aria-hidden="true"></div>
           <div class="card-answer-wrap">
             <div v-if="revealedIds.has(card.id)" class="card-answer">{{ card.answer }}</div>
-            <button v-else class="btn-reveal" @click="toggleReveal(card.id)">
+            <button
+              v-else
+              class="btn-reveal"
+              @click="toggleReveal(card.id)"
+              :aria-label="`Antwort auf „${card.question}“ anzeigen`"
+            >
               Antwort anzeigen
             </button>
           </div>
         </li>
       </ul>
-    </div>
+    </section>
   </div>
 </template>
 
@@ -122,7 +163,7 @@ onMounted(loadCards)
 
 .deck-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
@@ -138,6 +179,7 @@ onMounted(loadCards)
   cursor: pointer;
   transition: background 0.15s;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn-back:hover {
@@ -146,6 +188,7 @@ onMounted(loadCards)
 
 .deck-meta {
   flex: 1;
+  min-width: 0;
 }
 
 .deck-category-badge {
@@ -160,10 +203,17 @@ onMounted(loadCards)
 }
 
 .deck-heading {
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: #111827;
   margin-top: 0.35rem;
+  word-break: break-word;
+}
+
+@media (min-width: 640px) {
+  .deck-heading {
+    font-size: 1.6rem;
+  }
 }
 
 .btn-quiz {
@@ -177,6 +227,7 @@ onMounted(loadCards)
   cursor: pointer;
   transition: background 0.15s;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn-quiz:hover:not(:disabled) {
@@ -188,7 +239,6 @@ onMounted(loadCards)
   cursor: not-allowed;
 }
 
-/* Error */
 .error {
   background: #fef2f2;
   border: 1px solid #fca5a5;
@@ -198,7 +248,6 @@ onMounted(loadCards)
   font-size: 0.9rem;
 }
 
-/* Add card form */
 .add-card-form {
   background: white;
   border: 1px solid #e5e7eb;
@@ -223,7 +272,7 @@ onMounted(loadCards)
 
 .card-form textarea {
   flex: 1;
-  min-width: 180px;
+  min-width: 160px;
   padding: 0.6rem 0.9rem;
   border: 1px solid #d1d5db;
   border-radius: 8px;
@@ -255,11 +304,15 @@ onMounted(loadCards)
   white-space: nowrap;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: #4f46e5;
 }
 
-/* Cards section */
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .cards-header {
   display: flex;
   align-items: center;
@@ -281,6 +334,32 @@ onMounted(loadCards)
   border-radius: 99px;
 }
 
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #9ca3af;
+  font-size: 0.9rem;
+  padding: 2rem 0;
+  justify-content: center;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .empty {
   text-align: center;
   color: #9ca3af;
@@ -290,6 +369,8 @@ onMounted(loadCards)
 
 .card-list {
   list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -304,10 +385,12 @@ onMounted(loadCards)
   align-items: center;
   gap: 1rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  flex-wrap: wrap;
 }
 
 .card-question {
   flex: 1;
+  min-width: 120px;
   font-size: 0.95rem;
   color: #111827;
   font-weight: 500;
@@ -317,10 +400,22 @@ onMounted(loadCards)
   width: 1px;
   height: 2rem;
   background: #e5e7eb;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .card-divider {
+    display: none;
+  }
+  .card-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 .card-answer-wrap {
   flex: 1;
+  min-width: 120px;
 }
 
 .card-answer {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 interface Card {
@@ -19,6 +19,7 @@ const currentIndex = ref(0)
 const flipped = ref(false)
 const correctCount = ref(0)
 const done = ref(false)
+const loading = ref(true)
 const error = ref<string | null>(null)
 
 const currentCard = computed(() => cards.value[currentIndex.value])
@@ -28,13 +29,11 @@ const progressPercent = computed(() =>
 const scorePercent = computed(() =>
   cards.value.length ? Math.round((correctCount.value / cards.value.length) * 100) : 0,
 )
-
 const scoreClass = computed(() => {
   if (scorePercent.value >= 80) return 'great'
   if (scorePercent.value >= 50) return 'ok'
   return 'poor'
 })
-
 const scoreHeading = computed(() => {
   if (scorePercent.value === 100) return 'Perfekt!'
   if (scorePercent.value >= 80) return 'Sehr gut!'
@@ -43,12 +42,16 @@ const scoreHeading = computed(() => {
 })
 
 async function loadCards() {
+  loading.value = true
+  error.value = null
   try {
     const res = await fetch(`${apiUrl}/api/decks/${deckId}/cards`)
     if (!res.ok) throw new Error()
     cards.value = await res.json()
   } catch {
     error.value = 'Karten konnten nicht geladen werden.'
+  } finally {
+    loading.value = false
   }
 }
 
@@ -77,51 +80,118 @@ function backToDeck() {
   router.push({ name: 'deck', params: { id: deckId }, query: { title: deckTitle } })
 }
 
-onMounted(loadCards)
+function onKeydown(e: KeyboardEvent) {
+  if (done.value) return
+  if (e.key === ' ' || e.key === 'Enter') {
+    e.preventDefault()
+    if (!flipped.value) flip()
+  }
+  if (flipped.value) {
+    if (e.key === 'ArrowRight') answer(true)
+    if (e.key === 'ArrowLeft') answer(false)
+  }
+}
+
+onMounted(() => {
+  loadCards()
+  window.addEventListener('keydown', onKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+})
 </script>
 
 <template>
-  <div class="quiz-view">
+  <div class="quiz-view" role="main" aria-label="Quiz-Modus">
     <div class="quiz-header">
-      <button class="btn-back" @click="backToDeck">← {{ deckTitle }}</button>
-      <span class="quiz-label">Quiz</span>
+      <button class="btn-back" @click="backToDeck" aria-label="Zurück zum Deck">
+        ← {{ deckTitle }}
+      </button>
+      <span class="quiz-label" aria-hidden="true">Quiz</span>
     </div>
 
-    <p v-if="error" class="error">⚠ {{ error }}</p>
+    <div v-if="error" role="alert" aria-live="assertive" class="error">⚠ {{ error }}</div>
 
-    <div v-else-if="cards.length === 0 && !error" class="empty">Keine Karten in diesem Deck.</div>
+    <div v-else-if="loading" class="loading" role="status" aria-label="Karten werden geladen">
+      <span class="spinner" aria-hidden="true"></span>
+      <span>Laden…</span>
+    </div>
+
+    <div v-else-if="cards.length === 0" class="empty">Keine Karten in diesem Deck.</div>
 
     <!-- Quiz läuft -->
     <template v-else-if="!done">
-      <div class="progress-bar-wrap">
+      <div
+        class="progress-bar-wrap"
+        role="progressbar"
+        :aria-valuenow="currentIndex + 1"
+        :aria-valuemax="cards.length"
+        aria-label="Fortschritt"
+      >
         <div class="progress-bar" :style="{ width: progressPercent + '%' }"></div>
       </div>
-      <p class="progress-text">{{ currentIndex + 1 }} / {{ cards.length }}</p>
+      <p class="progress-text" aria-live="polite">
+        Karte {{ currentIndex + 1 }} von {{ cards.length }}
+      </p>
 
-      <div class="flip-scene" @click="flip">
+      <div
+        class="flip-scene"
+        @click="flip"
+        role="button"
+        tabindex="0"
+        :aria-label="
+          flipped
+            ? `Antwort: ${currentCard?.answer}`
+            : `Frage: ${currentCard?.question}. Klicken oder Enter zum Aufdecken`
+        "
+        @keydown.enter.prevent="flip"
+        @keydown.space.prevent="flip"
+      >
         <div class="flip-card" :class="{ flipped }">
-          <div class="flip-front">
+          <div class="flip-front" aria-hidden="true">
             <span class="card-label">Frage</span>
             <p class="card-text">{{ currentCard?.question }}</p>
-            <span class="flip-hint">Klicken zum Aufdecken</span>
+            <span class="flip-hint">Leertaste oder klicken</span>
           </div>
-          <div class="flip-back">
+          <div class="flip-back" aria-hidden="true">
             <span class="card-label">Antwort</span>
             <p class="card-text">{{ currentCard?.answer }}</p>
           </div>
         </div>
       </div>
 
-      <div v-if="flipped" class="answer-buttons">
-        <button class="btn-wrong" @click="answer(false)">✗ Nicht gewusst</button>
-        <button class="btn-correct" @click="answer(true)">✓ Gewusst</button>
+      <div
+        v-if="flipped"
+        class="answer-buttons"
+        role="group"
+        aria-label="Hast du die Antwort gewusst?"
+      >
+        <button
+          class="btn-wrong"
+          @click="answer(false)"
+          aria-label="Nicht gewusst (Pfeiltaste links)"
+        >
+          ✗ Nicht gewusst
+        </button>
+        <button class="btn-correct" @click="answer(true)" aria-label="Gewusst (Pfeiltaste rechts)">
+          ✓ Gewusst
+        </button>
       </div>
-      <p v-else class="flip-cta">Karte anklicken um die Antwort zu sehen</p>
+      <p v-else class="flip-cta" aria-hidden="true">Karte aufdecken, dann bewerten</p>
+      <p class="key-hint" aria-hidden="true">
+        <kbd>Leertaste</kbd> aufdecken &nbsp;·&nbsp; <kbd>←</kbd> nicht gewusst &nbsp;·&nbsp;
+        <kbd>→</kbd> gewusst
+      </p>
     </template>
 
     <!-- Endscreen -->
-    <div v-else class="endscreen">
-      <div class="score-circle" :class="scoreClass">
+    <div v-else class="endscreen" role="region" aria-label="Quiz abgeschlossen">
+      <div
+        class="score-circle"
+        :class="scoreClass"
+        aria-label="Ergebnis: {{ scorePercent }} Prozent"
+      >
         <span class="score-percent">{{ scorePercent }}%</span>
       </div>
       <h2 class="score-heading">{{ scoreHeading }}</h2>
@@ -158,6 +228,10 @@ onMounted(loadCards)
   color: #6b7280;
   cursor: pointer;
   transition: background 0.15s;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .btn-back:hover {
@@ -183,13 +257,37 @@ onMounted(loadCards)
   width: 100%;
 }
 
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #9ca3af;
+  font-size: 0.9rem;
+  padding: 4rem 0;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .empty {
   color: #9ca3af;
   font-size: 0.95rem;
   padding: 4rem 0;
 }
 
-/* Progress */
 .progress-bar-wrap {
   width: 100%;
   height: 6px;
@@ -211,13 +309,25 @@ onMounted(loadCards)
   align-self: flex-end;
 }
 
-/* Flip card */
 .flip-scene {
   width: 100%;
   max-width: 540px;
-  height: 260px;
+  height: 220px;
   perspective: 1200px;
   cursor: pointer;
+  outline: none;
+}
+
+.flip-scene:focus-visible {
+  outline: 2px solid #6366f1;
+  border-radius: 16px;
+  outline-offset: 4px;
+}
+
+@media (min-width: 480px) {
+  .flip-scene {
+    height: 260px;
+  }
 }
 
 .flip-card {
@@ -225,7 +335,7 @@ onMounted(loadCards)
   height: 100%;
   position: relative;
   transform-style: preserve-3d;
-  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .flip-card.flipped {
@@ -242,7 +352,7 @@ onMounted(loadCards)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1.5rem;
   gap: 0.75rem;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
 }
@@ -267,28 +377,32 @@ onMounted(loadCards)
 .flip-front .card-label {
   color: #9ca3af;
 }
-
 .flip-back .card-label {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .card-text {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
   text-align: center;
   line-height: 1.4;
 }
 
+@media (min-width: 480px) {
+  .card-text {
+    font-size: 1.25rem;
+  }
+}
+
 .flip-front .card-text {
   color: #111827;
 }
-
 .flip-back .card-text {
   color: white;
 }
 
 .flip-hint {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: #d1d5db;
   position: absolute;
   bottom: 1rem;
@@ -299,10 +413,9 @@ onMounted(loadCards)
   color: #9ca3af;
 }
 
-/* Answer buttons */
 .answer-buttons {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   width: 100%;
   max-width: 540px;
 }
@@ -313,17 +426,17 @@ onMounted(loadCards)
   padding: 0.85rem;
   border: none;
   border-radius: 10px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition:
-    transform 0.1s,
-    opacity 0.15s;
+    opacity 0.15s,
+    transform 0.1s;
 }
 
 .btn-wrong:hover,
 .btn-correct:hover {
-  opacity: 0.88;
+  opacity: 0.85;
   transform: translateY(-1px);
 }
 
@@ -331,19 +444,33 @@ onMounted(loadCards)
   background: #fee2e2;
   color: #b91c1c;
 }
-
 .btn-correct {
   background: #dcfce7;
   color: #15803d;
 }
 
-/* Endscreen */
+.key-hint {
+  font-size: 0.78rem;
+  color: #d1d5db;
+}
+
+kbd {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-family: inherit;
+}
+
 .endscreen {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
   padding: 2rem 0;
+  text-align: center;
 }
 
 .score-circle {
@@ -385,6 +512,8 @@ onMounted(loadCards)
   display: flex;
   gap: 0.75rem;
   margin-top: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .btn-restart {
