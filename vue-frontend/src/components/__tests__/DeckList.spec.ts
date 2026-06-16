@@ -2,6 +2,10 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import DeckList from '../DeckList.vue'
 
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}))
+
 const mockDecks = [
   { id: 1, title: 'Mathe', category: 'Schule' },
   { id: 2, title: 'Vokabeln', category: 'Sprachen' },
