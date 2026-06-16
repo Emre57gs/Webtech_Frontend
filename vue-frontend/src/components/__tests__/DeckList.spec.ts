@@ -76,7 +76,7 @@ describe('DeckList', () => {
     await flushPromises()
 
     await wrapper.find('input[placeholder="Titel"]').setValue('Physik')
-    await wrapper.find('input[placeholder="Kategorie"]').setValue('Schule')
+    await wrapper.find('select[aria-label="Kategorie"]').setValue('Mathematik')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
@@ -101,7 +101,7 @@ describe('DeckList', () => {
     await flushPromises()
 
     await wrapper.find('input[placeholder="Titel"]').setValue('Physik')
-    await wrapper.find('input[placeholder="Kategorie"]').setValue('Schule')
+    await wrapper.find('select[aria-label="Kategorie"]').setValue('Mathematik')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
@@ -111,7 +111,7 @@ describe('DeckList', () => {
       expect.stringContaining('/api/decks'),
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ title: 'Physik', category: 'Schule' }),
+        body: JSON.stringify({ title: 'Physik', category: 'Mathematik' }),
       }),
     )
     expect(wrapper.text()).toContain('Physik')
