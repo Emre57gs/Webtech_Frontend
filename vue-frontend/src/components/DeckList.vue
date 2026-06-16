@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 interface Deck {
@@ -8,6 +8,17 @@ interface Deck {
   category: string
 }
 
+const CATEGORIES = [
+  'Informatik',
+  'Mathematik',
+  'Sprachen',
+  'Naturwissenschaften',
+  'Geschichte',
+  'Wirtschaft',
+  'Geographie',
+  'Sonstiges',
+]
+
 const router = useRouter()
 const decks = ref<Deck[]>([])
 const error = ref<string | null>(null)
@@ -15,9 +26,23 @@ const loading = ref(true)
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
 const newTitle = ref('')
-const newCategory = ref('')
+const newCategory = ref<string>(CATEGORIES[0] ?? '')
 const creating = ref(false)
 const deletingId = ref<number | null>(null)
+const activeCategory = ref<string | null>(null)
+
+const usedCategories = computed(() => {
+  const seen = new Set(decks.value.map((d) => d.category))
+  return CATEGORIES.filter((c) => seen.has(c)).concat(
+    [...seen].filter((c) => !CATEGORIES.includes(c)),
+  )
+})
+
+const filteredDecks = computed(() =>
+  activeCategory.value
+    ? decks.value.filter((d) => d.category === activeCategory.value)
+    : decks.value,
+)
 
 async function loadDecks() {
   loading.value = true
@@ -45,7 +70,7 @@ async function createDeck() {
     })
     if (!response.ok) throw new Error()
     newTitle.value = ''
-    newCategory.value = ''
+    newCategory.value = CATEGORIES[0] ?? ''
     await loadDecks()
   } catch {
     error.value = 'Deck konnte nicht erstellt werden.'
@@ -91,14 +116,9 @@ onMounted(loadDecks)
           autocomplete="off"
           required
         />
-        <input
-          v-model="newCategory"
-          type="text"
-          placeholder="Kategorie"
-          aria-label="Kategorie"
-          autocomplete="off"
-          required
-        />
+        <select v-model="newCategory" aria-label="Kategorie" class="category-select">
+          <option v-for="cat in CATEGORIES" :key="cat" :value="cat">{{ cat }}</option>
+        </select>
         <button type="submit" class="btn-primary" :disabled="creating" :aria-busy="creating">
           {{ creating ? 'Wird erstellt…' : 'Erstellen' }}
         </button>
@@ -109,9 +129,33 @@ onMounted(loadDecks)
 
     <div class="decks-header">
       <h2 class="section-title">Meine Decks</h2>
-      <span class="deck-count" aria-label="{{ decks.length }} Decks vorhanden">
-        {{ decks.length }} {{ decks.length === 1 ? 'Deck' : 'Decks' }}
+      <span class="deck-count">
+        {{ filteredDecks.length }} {{ filteredDecks.length === 1 ? 'Deck' : 'Decks' }}
       </span>
+    </div>
+
+    <div
+      v-if="!loading && usedCategories.length > 0"
+      class="category-filters"
+      role="group"
+      aria-label="Nach Kategorie filtern"
+    >
+      <button
+        class="filter-chip"
+        :class="{ active: activeCategory === null }"
+        @click="activeCategory = null"
+      >
+        Alle
+      </button>
+      <button
+        v-for="cat in usedCategories"
+        :key="cat"
+        class="filter-chip"
+        :class="{ active: activeCategory === cat }"
+        @click="activeCategory = cat"
+      >
+        {{ cat }}
+      </button>
     </div>
 
     <div v-if="loading" class="loading" role="status" aria-label="Decks werden geladen">
@@ -123,8 +167,10 @@ onMounted(loadDecks)
       Noch keine Decks vorhanden – erstelle dein erstes Deck!
     </p>
 
+    <p v-else-if="filteredDecks.length === 0" class="empty">Keine Decks in dieser Kategorie.</p>
+
     <ul v-else class="deck-grid" role="list">
-      <li v-for="deck in decks" :key="deck.id" role="listitem">
+      <li v-for="deck in filteredDecks" :key="deck.id" role="listitem">
         <article class="deck-card" @click="goToDeck(deck)">
           <template v-if="deletingId !== deck.id">
             <div class="deck-card-top">
@@ -201,6 +247,27 @@ onMounted(loadDecks)
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
+.category-select {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #111;
+  background: white;
+  outline: none;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.category-select:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
 .btn-primary {
   padding: 0.6rem 1.4rem;
   background: #6366f1;
@@ -250,6 +317,39 @@ onMounted(loadDecks)
   background: #f3f4f6;
   padding: 0.2rem 0.6rem;
   border-radius: 99px;
+}
+
+.category-filters {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: -0.75rem;
+}
+
+.filter-chip {
+  padding: 0.3rem 0.85rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 99px;
+  background: white;
+  font-size: 0.8rem;
+  color: #6b7280;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+  white-space: nowrap;
+}
+
+.filter-chip:hover {
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.filter-chip.active {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: white;
 }
 
 /* Loading */
