@@ -196,8 +196,8 @@ onMounted(loadCards)
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #6366f1;
-  background: #eef2ff;
+  color: #312e81;
+  background: #e0e7ff;
   border-radius: 4px;
   padding: 0.2rem 0.5rem;
 }
@@ -328,8 +328,8 @@ onMounted(loadCards)
 
 .card-count {
   font-size: 0.8rem;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: #374151;
+  background: #e5e7eb;
   padding: 0.2rem 0.6rem;
   border-radius: 99px;
 }
@@ -426,11 +426,11 @@ onMounted(loadCards)
 
 .btn-reveal {
   background: none;
-  border: 1px dashed #d1d5db;
+  border: 1px solid #d1d5db;
   border-radius: 6px;
   padding: 0.3rem 0.75rem;
   font-size: 0.82rem;
-  color: #9ca3af;
+  color: #6b7280;
   cursor: pointer;
   transition:
     border-color 0.15s,
@@ -439,6 +439,6 @@ onMounted(loadCards)
 
 .btn-reveal:hover {
   border-color: #6366f1;
-  color: #6366f1;
+  color: #4f46e5;
 }
 </style>

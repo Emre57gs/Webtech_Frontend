@@ -241,8 +241,8 @@ onUnmounted(() => {
 .quiz-label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #6366f1;
-  background: #eef2ff;
+  color: #312e81;
+  background: #e0e7ff;
   padding: 0.25rem 0.75rem;
   border-radius: 99px;
 }
@@ -305,7 +305,7 @@ onUnmounted(() => {
 
 .progress-text {
   font-size: 0.85rem;
-  color: #9ca3af;
+  color: #6b7280;
   align-self: flex-end;
 }
 
@@ -375,7 +375,7 @@ onUnmounted(() => {
 }
 
 .flip-front .card-label {
-  color: #9ca3af;
+  color: #6b7280;
 }
 .flip-back .card-label {
   color: rgba(255, 255, 255, 0.65);
@@ -403,14 +403,14 @@ onUnmounted(() => {
 
 .flip-hint {
   font-size: 0.75rem;
-  color: #d1d5db;
+  color: #9ca3af;
   position: absolute;
   bottom: 1rem;
 }
 
 .flip-cta {
   font-size: 0.85rem;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .answer-buttons {
@@ -451,16 +451,16 @@ onUnmounted(() => {
 
 .key-hint {
   font-size: 0.78rem;
-  color: #d1d5db;
+  color: #9ca3af;
 }
 
 kbd {
   background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #d1d5db;
   border-radius: 4px;
   padding: 0.1rem 0.4rem;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #374151;
   font-family: inherit;
 }
 
