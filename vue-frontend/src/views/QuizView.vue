@@ -347,7 +347,7 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   backface-visibility: hidden;
-  border-radius: 16px;
+  border-radius: 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -441,8 +441,8 @@ onUnmounted(() => {
 }
 
 .btn-wrong {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: #fbeae3;
+  color: #b5552e;
 }
 .btn-correct {
   background: #dcfce7;
@@ -474,26 +474,18 @@ kbd {
 }
 
 .score-circle {
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.6rem;
-  font-weight: 800;
+  box-shadow: 0 8px 20px -10px rgba(17, 24, 39, 0.25);
 }
 
 .score-circle.great {
-  background: #dcfce7;
-  color: #15803d;
+  background: #e3f6ea;
+  color: #1f7a4d;
 }
 .score-circle.ok {
   background: #fef9c3;
   color: #854d0e;
 }
 .score-circle.poor {
-  background: #fee2e2;
   color: #b91c1c;
 }
 
