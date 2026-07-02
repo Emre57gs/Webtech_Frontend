@@ -16,6 +16,7 @@ const deckCategory = route.query.category as string
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
 const cards = ref<Card[]>([])
+const deletingCardId = ref<number | null>(null)
 const error = ref<string | null>(null)
 const loading = ref(true)
 const adding = ref(false)
@@ -55,6 +56,26 @@ async function addCard() {
     error.value = 'Karte konnte nicht erstellt werden.'
   } finally {
     adding.value = false
+  }
+}
+
+async function deleteCard(cardId: number) {
+  deletingCardId.value = cardId
+  error.value = null
+
+  try {
+    const res = await fetch(`${apiUrl}/api/decks/${deckId}/cards/${cardId}`, {
+      method: 'DELETE',
+    })
+
+    if (!res.ok) throw new Error()
+
+    revealedIds.value.delete(cardId)
+    await loadCards()
+  } catch {
+    error.value = 'Karte konnte nicht gelöscht werden.'
+  } finally {
+    deletingCardId.value = null
   }
 }
 
@@ -138,7 +159,17 @@ onMounted(loadCards)
           <div class="card-question">{{ card.question }}</div>
           <div class="card-divider" aria-hidden="true"></div>
           <div class="card-answer-wrap">
-            <div v-if="revealedIds.has(card.id)" class="card-answer">{{ card.answer }}</div>
+            <template v-if="revealedIds.has(card.id)">
+              <div class="card-answer">{{ card.answer }}</div>
+              <button
+                class="btn-reveal"
+                @click="toggleReveal(card.id)"
+                :aria-label="`Antwort auf „${card.question}“ ausblenden`"
+              >
+                Antwort ausblenden
+              </button>
+            </template>
+
             <button
               v-else
               class="btn-reveal"
@@ -148,6 +179,15 @@ onMounted(loadCards)
               Antwort anzeigen
             </button>
           </div>
+
+          <button
+            class="btn-delete-card"
+            :disabled="deletingCardId === card.id"
+            @click="deleteCard(card.id)"
+            :aria-label="`Karte „${card.question}“ löschen`"
+          >
+            {{ deletingCardId === card.id ? 'Löscht…' : 'Löschen' }}
+          </button>
         </li>
       </ul>
     </section>
@@ -440,5 +480,28 @@ onMounted(loadCards)
 .btn-reveal:hover {
   border-color: #6366f1;
   color: #4f46e5;
+}
+
+.btn-delete-card {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.82rem;
+  color: #b91c1c;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.btn-delete-card:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.btn-delete-card:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>
